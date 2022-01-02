@@ -1,0 +1,941 @@
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+|CWTNFish.mac by Chatwiththisname sometime in 2018ish.
+|
+| Readme! Tailor ***Settings*** to customize timing, messages, what to do if you aggro... default afk
+|   message is Bio! Go wild and crazy and make something up.
+|
+| v1.23 Updated by AmericanNero 12/26/2021
+|   - Reportedly, twigs and other trash things were being kept, which was naughty. I could not replicate
+|     so I fixed some things that didn't necessarily need fixing.
+|   - Tidied up afk spam.
+|   - Added some message formatting.
+|   - Smoothed out timing and cursor checks.
+|   - Keeping trash was broke when ${Destroy} = FALSE. Clean up the lakes and rivers, for Petesake!
+|   - The opening and closing of windows and bags was so fast and disconcerting. Slowed it down a hair
+|	  so it looks intentional.
+|
+| v1.22 Updated by AmericanNero 12/16/2021
+|	- Added fish from Terror of Luclin expansion (from Allakhazam and eqtraders fishing holes)
+|   - Added Small Twigs to the Destroy list
+|   - Cleaned up the keeper list
+|   - Updated stats counters and messages.
+|
+| v1.21 Updated by AmericanNero 5/7/2021
+|   - If you look around while fishing, it will respect where you ended up looking and fidget in that direction.
+|   - Corrected potential flip based on bug in /face heading command. Tested facing all cardinal directions.
+|
+| v1.2 Updated by AmericanNero 2/27/2021
+|	- Setting grptotal now assumes the number in your group is the number of acceptable PC's before triggering afk routine.
+|	- Setting grptotal can be done at the command line e.g. /mac CWTNFISHFlyCasual 2 or... /mac CWTNFISHFlyCasual 200 (for the brave or foolhardy in POK?)
+|	- Added FlyCasual sub which adds time variability around how many casts occur before a pause, and variability about how long this pause is.
+|   - After so many casts the character will stand up or sit down
+|	- You may disable FlyCasual, or tweak the settings to your liking.
+|   - /flycasual enables/disables the function
+|   - Added FlyCasualFidget 0/1. The fisherman may get up and look around before returning to fishing; associated with how often it sits / stands
+|	- Now reports when you get better at fishing
+|	- Recognizes when you luckily caught something
+|   - Reduces frequency of double casting the line
+|   - If a GM is around, just camp. You also have the choice endmacro manually and do what you need to.
+|	- If other PCs are around and won't leave, just go afk and end macro. Safer to manually do what you need before starting again.
+|
+| Updated by Cannonballdex 1/2/2021
+|	Added GM Alert - Edit the action you want to take in the Sub GMCheck below - Default is to go AFK and end the macro
+|	Added AFK mode when PC is near - Edit radius, how long to go afk, afk message and group numbers to ignore in settings below
+|   Added Aggro Mode when getting AGGRO - Edit the action you want to take below under Sub Aggro - Default is to use Bulwark of Many Portals and Gate
+|	Added Ancient Fishing Pole to Pole List
+|	Changed the way bait is made if an item is already in this slot
+|	Ends macro if you run out of room in inventory
+|	Added most of the COV Fish to useless stats
+|	Closes all of your bags while fishing
+|	Added Fish Scales to Destroy List - You can edit the destroy True or False in settings below
+|
+| Updated by Chatwiththisname 12/2/2020 **|
+|			 - Updated by ChatWithThisName 12/2/2020
+|				Added Hargar Brand Fishing Pail - MOTD mod, remodded again by me. 
+|				Added consideration for Bookworms - MOTD mod.
+|				Restructured a lot of the logic. Equipping fishing poles code is tons clearer. 
+|				Changed /stats alias to be a bind.
+|				Removed MQ2Cast dependency for items in favor of /useitem
+|				Changed the code to reflect the name change to FISH
+|				Removed the requirement to have the bags open.
+|
+|			 - Updated by ChatWithThisName 8/31/2018 -- Fixed chain summoning brell's fishing pole. Added support
+|				for Anizok's Biat dispenser. 
+|
+|			 - Updated by Chatwiththisname 2/23/2019 -- Updated to include "The Bone Rod"
+|
+|	All bags should remain open while the macro is in use. 
+|	Custom sub routine to open all your bags.
+|
+|	Uses Brell's Fishin' Pole to summon a new pole if yours breaks.
+|	Uses Endless Worms to summon new bait if you run out.
+|
+|	If no Fishing Pole and no Brell's Fishin' Pole ~ Will inform you that you need a new pole.
+|	If no bait and no Endless Worms ~ Will inform you that you are out and end the macro.
+|
+|	Type /stats 
+|	to get a statistics output to MQ2Window
+|
+|	Settings: 
+|		Destroy ~ Destroy Sandals and Daggers
+|		getDrunk ~ Uses Brell's Fishin' Pole to summon ale and drink it to get drunk
+|		reportSummoning ~ If true it will report to MQ2Window every time FISH summons an item. 
+|							This can cause a lot of spam if getDrunk is TRUE
+|
+|	Email: BrokenRobotGames@gmail.com if the macro becomes unusable.
+|
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+#event Pole "#*#You can't fish without a fishing pole, go buy one.#*#"
+#event Pole "#*#fishing pole in your primary hand.#*#"
+#event poleBroke "#*#fishing pole broke#*#"
+#event NoBait "#*#without fishing bait#*#"
+#event noWater "#*#land sharks#*#"
+#event castLine "#*#cast your line#*#"
+#event moved "#*#go on your way#*#"
+#event dryLand "#*#dry land to fish#*#"
+#event drankAle "#*#You take a swig of Summoned: Ale#*#"
+#event caughtNothing "#*#You didn't catch anything#*#"
+#event spillBeer "#*#You spill your beer#*#"
+#event youCaught "#*#You caught#*#"
+#event youCaught "#*#You luckily caught#*#"
+#event skillUp "#*#better at Fishing! (#1#)#*#"
+
+#bind StatsCmd /stats
+#bind FlyCasualCmd /flycasual
+
+#warning
+
+Sub Bind_StatsCmd
+	/echo \at[\apCWTN\at]\ao Times Casted Line: ${castCount}
+	/echo \at[\apCWTN\at]\ao Other Good Catches: ${caughtCount}
+	/echo \at[\apCWTN\at]\ao Caught Nothing: ${caughtNothing}
+	/echo \at[\apCWTN\at]\ao Trash Kept: ${TrashKept}
+	/echo \at[\apCWTN\at]\ao Sandles Caught: ${sandleCount}
+	/echo \at[\apCWTN\at]\ao Daggers Caught: ${daggerCount}
+	/echo \at[\apCWTN\at]\ao Scales Caught: ${scalesCount}
+	/echo \at[\apCWTN\at]\ao Small Twigs Caught: ${twigsCount}
+	/echo \at[\apCWTN\at]\ao Poles Broken: ${poleCount}
+	/echo \at[\apCWTN\at]\ao Ales Drank: ${alesDrank}
+	/echo \at[\apCWTN\at]\ao Beers Spilled: ${beerSpills}
+	/echo \at[\apCWTN\at]\ao Fresh Fish Caught: ${freshFish}
+	/echo \at[\apCWTN\at]\ao Salt Minnow Caught: ${saltMinnow}
+	/echo \at[\apCWTN\at]\ao Iksar Phalange Caught: ${iksarPhalange}
+	/echo \at[\apCWTN\at]\ao Velious Arrowhead Caught: ${veliousArrowhead}
+	/echo \at[\apCWTN\at]\ao Velious Cod Caught: ${veliousCod}
+	/echo \at[\apCWTN\at]\ao Dragon Bay Snapper Caught: ${dragonbaySnapper}
+	/echo \at[\apCWTN\at]\ao Cobalt Cod Caught: ${cobaltCod}
+	/echo \at[\apCWTN\at]\ao Crescent Perch Caught: ${crescentPerch}
+	/echo \at[\apCWTN\at]\ao Sewer Catfish Caught: ${sewerCatfish}
+	/echo \at[\apCWTN\at]\ao Primordial Clown Fish Caught: ${clownFish}
+	/echo \at[\apCWTN\at]\ao Overthere Threadfin Caught: ${overthereThreadfin}
+	/echo \at[\apCWTN\at]\ao Velious Bluefish Caught: ${veliousBluefish}
+	/echo \at[\apCWTN\at]\ao Primordial Lion Fish Caught: ${lionFish}
+	/echo \at[\apCWTN\at]\ao Velious Angel Fish Caught: ${angelFish}
+	/echo \at[\apCWTN\at]\ao Luclin Dragon Blood Cichlid: ${luclinBloodCichlid}
+	/echo \at[\apCWTN\at]\ao Luclin Flame Angel: ${luclinFlameAngel}
+/return 
+
+Sub Bind_FlyCasualCmd
+	/if (${FlyCasual}) {
+		/varset FlyCasual 0
+		/echo \at[\apFlyCasual\at]\ag \arDisabled\at \aysituation normal...
+	} else {
+		/varset FlyCasual 1
+		/echo \at[\apFlyCasual\at]\ag \agEnabled\at \ayMay the fish be with you!
+	}
+/return
+
+Sub BindCheck
+	|This sub is here to allow binds to fire in loops.
+	|Without a Sub being called binds won't fire when locked into loops.
+	|As a secondary, it also adds a /delay 1, and a /doevents to reduce redundant calling of these requirements. 
+	/delay 1
+	/doevents
+/return
+
+Sub Main
+
+	|**************Settings**************|
+	|
+	| Look at Sub Aggro and edit with your favored way of getting out of
+	| a bad situation. Some common ways are hardcoded.
+	|
+	|**Destroy Items - Get Drunk - Report Summoning - Alert GM - Alert PC - TRUE or FALSE*****|
+	/declare Destroy bool outer TRUE
+
+	/declare getDrunk bool outer FALSE
+	/declare reportSummoning bool outer TRUE
+	/declare getAggro bool outer TRUE
+	/declare alertGM bool outer TRUE
+	/declare alertPC bool outer TRUE
+
+	|***Change PCRadiusCheck 150 to distance you want to AFK when PC is near***|
+	/declare PCRadiusCheck int outer 150
+
+	|***Change AFKTime 30 to how many seconds you want to go AFK before attempting to fish again***|
+	/declare AFKTime int outer 30
+
+	|***Change AFKMsg AFK BRB to the message you want to reply to tells when you are AFK***|
+	/declare AFKMsg string outer "Bio!"
+
+	|***Ignores this amount of people in your afk radius including yourself. If you have two people fishing in your group make it 3***|
+	|***Now sets the grptotal, below***|
+	/declare grptotal int outer 1
+
+	|**********End of Settings**********|
+	/declare DelayMult int outer 1
+	/declare caughtCount int outer 0
+	/declare poleCount int outer 0
+	/declare castCount int outer 0
+	/declare sandleCount int outer 0
+	/declare daggerCount int outer 0
+	/declare scalesCount int outer 0
+	/declare twigsCount int outer 0
+	/declare alesDrank int outer 0
+	/declare beerSpills int outer 0
+	/declare freshFish int outer 0
+	/declare saltMinnow int outer 0
+	/declare iksarPhalange int outer 0
+	/declare veliousArrowhead int outer 0
+	/declare veliousCod int outer 0
+	/declare dragonbaySnapper int outer 0
+	/declare cobaltCod int outer 0
+	/declare crescentPerch int outer 0
+	/declare sewerCatfish int outer 0
+	/declare clownFish int outer 0
+	/declare lionFish int outer 0
+	/declare overthereThreadfin int outer 0
+	/declare veliousBluefish int outer 0
+	/declare angelFish int outer 0
+	/declare luclinBloodCichlid int outer 0
+	/declare luclinFlameAngel int outer 0
+	/declare caughtNothing int outer 0
+	/declare TrashKept int outer 0
+	/declare waitTimer timer outer 65
+	/declare HaveDispenser int outer ${FindItemCount[Anizok's Bait Dispenser]}
+	/declare TimeInc int outer
+	|***Begin FlyCasual - Perception is reality. Add some variability to fishing behavior to mitigate raising the ire of others 0/1***|
+	/declare FlyCasual int outer 1
+	/declare CaughtSomething int outer 0
+	/declare ICast int outer 0
+	|***Add some variation to how often a delay occurs and its duration 0/1***|
+	/declare FlyCasualDelay int outer 1
+	|*** The Avg midpoint is 3s, with a var of 2s, which means a delay range of from 1s-5s. Var must never be > avg or else neg time which warps spacetime continuum***|
+	/declare FlyCasualDelayAvg int outer 3
+	/declare FlyCasualDelayVar int outer 2
+	/declare FlyCasualDelayDuration int outer 0
+	|***How many casts before a delay occurs? Below shows avg of 3 with +- 1 for a range of 2-4 casts***|
+	/declare FlyCasualDelayCounterAvg int outer 3
+	/declare FlyCasualDelayCounterVar int outer 1
+	/declare FlyCasualDelayCounter int outer 0
+	|***Should we sit and stand once in awhile? After how many casts on avg, and how much variation?***|
+	/declare FlyCasualSitStand int outer 1
+	/declare FlyCasualSitStandAvg int outer 40
+	/declare FlyCasualSitStandVar int outer 20
+	/declare FlyCasualSitStandCounter int outer 25
+
+	|***Should we turn while standing?***|
+	/declare FlyCasualFidget int outer 1
+	||| -----------------------------------------------------------------------
+	|||
+	||| E.g. (5 + (5 +/- 1)) could be 9, 10, or 11 casts. That is too fidgety.
+	||| recommend average 10, modify 10, variation 5.
+	|||
+	||| -----------------------------------------------------------------------
+	|||
+	||| The average number of casts a char will move a bit.
+	|||
+	/declare FlyCasualFidgetCounter int outer 10
+	|||
+	||| How many casts would we modify the average by?  Value must be less or equal to the average.
+	|||
+	/declare FlyCasualFidgetCounterAvg int outer 10
+	|||
+	||| How much variation, plus or minus, around the cast variation. 
+	|||
+	/declare FlyCasualFidgetCounterVar int outer 5
+	|||
+	||| -----------------------------------------------------------------------
+
+	/declare FlyCasualFidgetOriginalHeading float outer ${Me.Heading.Degrees}
+	|***Need to fix difference in heading computation so /face works first time***|
+	/varcalc FlyCasualFidgetOriginalHeading 360.0 - ${Me.Heading.Degrees}
+	/declare FlyCasualFidgetNewHeading float outer 3.0
+	/declare FlyCasualFidgetDegVar float outer 5.0
+	|***End FlyCasual***|
+	/echo \at[\apCWTN\at]\ao Thanks for using CWTNFish by ChatWithThisName and extended by AmericanNero and Cannonballdex
+	/echo \at[\apCWTN\at]\ao Typing \at/stats \aowill output some useless statistics from your use of the macro from this run.
+	/echo \at[\apCWTN\at]\ay Edit the AFK, AGGRO, Keep or Destroy Setting in the macro file.
+	/echo \at[\apFlyCasual\at]\ag You may disable or enable naturalistic behavior by entering \ay/flycasual\at
+	/echo \at[\apFlyCasual\at]\ag We will stretch out after \at[\aw${FlyCasualSitStandCounter}\at] \aycasts.
+	
+	|/echo Params: ${Macro.Params} ${Param0}
+	|***Set grptotal. If no parameters assume it is the number in the group***|
+	/if (!${Macro.Params}) {
+		/varcalc grptotal ${Group}+1
+	} else {
+		/varset grptotal ${Param0}
+		/if (${grptotal}<1) {
+			/varset grptotal 1
+		}
+	}
+	/echo \at[\apCWTN\at]\ag Fishing will stop when more than \at[\aw${grptotal}\at] \aynearby PCs.
+	
+	/call OpenAllContainers
+    /call CheckPole
+	/call CheckBait
+	/call CloseAllContainers
+	
+|MainLoop
+	/while (1) {
+		/if (${getDrunk} && ${FindItemCount[=Brell's Fishin' Pole]} && ${FindItemCount[=Summoned: Ale]} < 1) {
+			/call getAle
+		} else /if (${getDrunk} && ${FindItemCount[=Summoned: Ale]}) {
+			/useitem "Summoned: Ale"
+		}
+		
+		/call SummonHargarsBait		
+		
+		/if (!${ICast}) {
+			/doability Fishing
+			/varset ICast 1
+		}
+		
+		/while (${waitTimer}) {
+			/call BindCheck
+		}
+
+		| Timer expired...nothing on cursor, so we didnt catch anything. Boo.
+		/if (!${waitTimer} && !${Cursor.ID}) {
+			/varset ICast 0
+		}
+		
+		/while (${Cursor.ID}) {
+			/call KeepItem
+			/call BindCheck
+			/varset CaughtSomething 1
+			/varset ICast 0
+		}
+		
+		/if (${CaughtSomething} && ${FlyCasual}) {
+			/call doFlyCasual
+			/varset CaughtSomething 0
+		}
+		
+		/call BindCheck
+		/call GMCheck
+		/call AFKCheck
+		/call Aggro
+		/call BagsFull
+
+		| After we do all the things, reset the timer.
+		/varset waitTimer ${waitTimer.OriginalValue}
+
+	}
+/return
+
+Sub SummonHargarsBait
+	|** Summon Hargar's Special Bait. **|
+	/if (${FindItemCount[Hargar Brand Fishing Pail]}) {
+		/if (!${FindItem[Hargar Brand Fishing Pail].TimerReady}) {
+			/useitem "Hargar Brand Fishing Pail"
+			/delay 2s ${Me.Casting.ID}
+			/delay 10s !${Me.Casting.ID}
+			/autoinventory
+		}
+	}
+
+/return
+
+Sub KeepItem
+	/if (${Cursor.Name.Find[bait]} || ${Cursor.Name.Find[bookworm]}) {
+		/autoinventory
+		/delay 1s !${Cursor.ID}
+		/return
+	}
+
+	/if (${Destroy}) {
+
+		/if (${Cursor.Name.Equal[Tattered Cloth Sandal]}) {
+			/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \ayDestroying
+			/varcalc sandleCount ${sandleCount} + 1
+			/destroy
+			/delay 1s !${Cursor.ID}
+
+		} else /if (${Cursor.Name.Equal[Rusty Dagger]}) {
+			/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \ayDestroying
+			/varcalc daggerCount ${daggerCount} + 1
+			/destroy
+			/delay 1s !${Cursor.ID}
+
+		} else /if (${Cursor.Name.Equal[Iksar Phalange]}) {
+			/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \ayDestroying
+			/varcalc iksarPhalange ${iksarPhalange} + 1
+			/destroy
+			/delay 1s !${Cursor.ID}
+
+		} else /if (${Cursor.Name.Equal[Sewer Catfish]}) {
+			/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \ayDestroying
+			/varcalc sewerCatfish ${sewerCatfish} + 1
+			/destroy
+			/delay 1s !${Cursor.ID}
+
+		} else /if (${Cursor.Name.Equal[Salt Minnow]}) {
+			/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \ayDestroying
+			/varcalc saltMinnow ${saltMinnow} + 1
+			/destroy
+			/delay 1s !${Cursor.ID}
+
+		} else /if (${Cursor.Name.Equal[Fish Scales]}) {
+			/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \ayDestroying
+			/varcalc scalesCount ${scalesCount} + 1
+			/destroy
+			/delay 1s !${Cursor.ID}
+
+		} else /if (${Cursor.Name.Equal[Small Twigs]}) {
+			/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \ayDestroying
+			/varcalc twigsCount ${twigsCount} + 1
+			/destroy
+			/delay 1s !${Cursor.ID}
+		}
+	}
+
+	/if (!${Cursor.ID}) {
+		/return
+	}
+
+	/if (${Cursor.Name.Equal[Summoned: Ale]}) {
+		/autoinventory
+		/delay 1s !${Cursor.ID}
+	}
+
+	/if (${Cursor.Name.Equal[Fresh Fish]}) {
+		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
+		/varcalc freshFish ${freshFish} + 1
+		/autoinventory
+		/delay 1s !${Cursor.ID}
+
+	} else /if (${Cursor.Name.Equal[Velious Arrowhead]}) {
+		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
+		/varcalc veliousArrowhead ${veliousArrowhead} + 1
+		/autoinventory
+		/delay 1s !${Cursor.ID}
+
+	} else /if (${Cursor.Name.Equal[Velious Cod]}) {
+		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
+		/varcalc veliousCod ${veliousCod} + 1
+		/autoinventory
+		/delay 1s !${Cursor.ID}
+
+	} else /if (${Cursor.Name.Equal[Dragon Bay Snapper]}) {
+		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
+		/varcalc dragonbaySnapper ${dragonbaySnapper} + 1
+		/autoinventory
+		/delay 1s !${Cursor.ID}
+
+	} else /if (${Cursor.Name.Equal[Cobalt Cod]}) {
+		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
+		/varcalc cobaltCod ${cobaltCod} + 1
+		/autoinventory
+		/delay 1s !${Cursor.ID}
+
+	} else /if (${Cursor.Name.Equal[Crescent Perch]}) {
+		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
+		/varcalc crescentPerch ${crescentPerch} + 1
+		/autoinventory
+		/delay 1s !${Cursor.ID}
+
+	} else /if (${Cursor.Name.Equal[Primordial Clown Fish]}) {
+		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
+		/varcalc clownFish ${clownFish} + 1
+		/autoinventory
+		/delay 1s !${Cursor.ID}
+
+	} else /if (${Cursor.Name.Equal[Overthere Threadfin]}) {
+		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
+		/varcalc overthereThreadfin ${overthereThreadfin} + 1
+		/autoinventory
+		/delay 1s !${Cursor.ID}
+
+	} else /if (${Cursor.Name.Equal[Velious Bluefish]}) {
+		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
+		/varcalc veliousBluefish ${veliousBluefish} + 1
+		/autoinventory
+		/delay 1s !${Cursor.ID}
+
+	} else /if (${Cursor.Name.Equal[Primordial Lion Fish]}) {
+		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
+		/varcalc lionFish ${lionFish} + 1
+		/autoinventory
+		/delay 1s !${Cursor.ID}
+
+	} else /if (${Cursor.Name.Equal[Velious Angel Fish]}) {
+		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
+		/varcalc angelFish ${angelFish} + 1
+		/autoinventory
+		/delay 1s !${Cursor.ID}
+
+	} else /if (${Cursor.Name.Equal[Luclin Dragon Blood Cichlid]}) {
+		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
+		/varcalc luclinBloodCichlid ${luclinBloodCichlid} + 1
+		/autoinventory
+		/delay 1s !${Cursor.ID}
+
+	} else /if (${Cursor.Name.Equal[Luclin Flame Angel]}) {
+		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
+		/varcalc luclinFlameAngel ${luclinFlameAngel} + 1
+		/autoinventory
+		/delay 1s !${Cursor.ID}
+
+	} else {
+		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
+		/varcalc caughtCount ${caughtCount} + 1
+		/autoinventory
+		/delay 1s !${Cursor.ID}
+
+	} else /if (!${Destroy}) {
+		| Not gonna bother counting each item ...its trash. I don't want to rewrite this right now. AN
+		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agTrash kept. Hippy.
+		/varcalc TrashKept ${TrashKept} + 1
+		/autoinventory
+		/delay 1s !${Cursor.ID}
+	}
+	
+/return
+
+Sub CheckPole
+	/call OpenAllContainers
+	/if (${Me.Inventory[mainhand].Name.Find[Fishing Pole]} || ${Me.Inventory[mainhand].Name.Find[Brell's Fishin' Pole]} || ${Me.Inventory[mainhand].Name.Find[The Bone Rod]} || ${Me.Inventory[mainhand].Name.Find[Ancient Fishing Pole]}) {
+		/return
+	}
+	
+	|Prefer the bone rod. 
+	/if (${FindItemCount[=The Bone Rod]}) {
+		/while (!${Me.Inventory[mainhand].Name.Equal[The Bone Rod]}) {
+			/if (!${FindItemCount[=The Bone Rod]}) {
+				/break
+			}
+		
+			/call GrabItem "The Bone Rod" "left"
+			/delay 2s ${Cursor.ID}
+			/nomodkey /itemnotify mainhand leftmouseup
+			/delay 1s ${Me.Inventory[mainhand].Name.Equal[The Bone Rod]}
+			/delay 5
+			/autoinventory
+			/delay 1s !${Cursor.ID}
+			
+		}
+		/if (${Me.Inventory[mainhand].Name.Equal[The Bone Rod]}) /return
+	}
+	
+	|If I don't have "The Bone Rod", then let's use Brell's Fishin' Pole
+	/if (${FindItemCount[=Brell's Fishin' Pole]} || ${FindItemCount[=Fisherman's Companion]}) {
+		|If I don't have a Brell's Fishin' Pole, that means I must have Fisherman's Companion to have gotten to here.
+		|So we'll need to summon the Brell's Fishin' Pole.
+		/if (!${FindItemCount[=Brell's Fishin' Pole]}) {
+			/if (${reportSummoning}) {
+				/echo \at[\apCWTN\at]\ap Summoning \aw--->\ap Brell's Fishin' Pole \aw<---
+			}
+			
+			/useitem "Fisherman's Companion"
+			/delay 2s ${Me.Casting.ID}
+			/delay 25s !${Me.Casting.ID}
+			
+			/if (${Cursor.ID}) {
+				/autoinventory
+			}
+			
+			/delay 2s !${Cursor.ID}
+			
+			|If the autoinv happens to drop the Brell's Fishin' Pole in my primary slot, we should just leave the function.
+			/if (${Me.Inventory[mainhand].Name.Equal[Brell's Fishin' Pole]}) {
+				/return
+			}
+		}
+		
+		|If I already have the Brell's Fishin' Pole on me, but it's not equipped, we should do that.
+		/if (${FindItemCount[=Brell's Fishin' Pole]}) {
+			/echo \at[\apCWTN\at]\aw Equipping ---> Brell's Fishin' Pole <---
+			
+			/while (!${Me.Inventory[mainhand].Name.Equal[Brell's Fishin' Pole]}) {
+				/if (!${FindItemCount[=Brell's Fishin' Pole]}) {
+					/break
+				}
+				
+				/call GrabItem "Brell's Fishin' Pole" "left"
+				/delay 2s ${Cursor.ID}
+				/nomodkey /itemnotify mainhand leftmouseup
+				/delay 1s ${Me.Inventory[mainhand].Name.Equal[Brell's Fishin' Pole]}
+				/delay 5
+				/autoinventory
+				/delay 2s !${Cursor.ID}
+			}
+			/if (${Me.Inventory[mainhand].Name.Equal[Brell's Fishin' Pole]}) /return
+		}
+	}
+	
+	|Try using Ancient rod. 
+	/if (${FindItemCount[=Ancient Fishing Pole]}) {
+		/while (!${Me.Inventory[mainhand].Name.Equal[Ancient Fishing Pole]}) {
+			/if (!${FindItemCount[=Ancient Fishing Pole]}) {
+				/break
+			}
+		
+			/call GrabItem "Ancient Fishing Pole" "left"
+			/delay 2s ${Cursor.ID}
+			/nomodkey /itemnotify mainhand leftmouseup
+			/delay 1s ${Me.Inventory[mainhand].Name.Equal[Ancient Fishing Pole]}
+			/delay 5
+			/autoinventory
+			/delay 1s !${Cursor.ID}
+			
+		}
+		/if (${Me.Inventory[mainhand].Name.Equal[Ancient Fishing Pole]}) /return
+	}
+	
+	|Don't have "The Bone Rod" or "Fisherman's Companion" or "Ancient Fishing Pole" - Need to equip a normal fishing pole.
+	/if (${FindItemCount[=Fishing Pole]}) {
+		/echo \at[\apCWTN\at]\aw Equiping ---> Fishing Pole <---
+		
+		/while (!${Me.Inventory[mainhand].Name.Find[Fishing pole]}) {
+			|If magically I suddenly don't have any fishing poles on me, break out.
+			/if (!${FindItemCount[=Fishing Pole]}) {
+				/break
+			}
+			
+			/call GrabItem "Fishing Pole" "left"
+			/delay 2s ${Cursor.ID}
+			/nomodkey /itemnotify mainhand leftmouseup
+			/delay 1s ${Me.Inventory[mainhand].Name.Find[Fishing pole]}
+			/delay 5
+			/autoinventory
+			/delay 1s !${Cursor.ID}
+		}
+
+		/if (${Me.Inventory[mainhand].Name.Find[Fishing Pole]}) /return
+	}
+
+	|If I made it here, I wasn't able to equip a fishing pole. So we should end the macro.
+	/if (!${Me.Inventory[mainhand].Name.Equal[The Bone Rod]} && !${Me.Inventory[mainhand].Name.Equal[Brell's Fishin' Pole]} && !${Me.Inventory[mainhand].Name.Find[Fishing Pole]}) {
+		/echo  \at[\apCWTN\at]\aw You need to put your fishing pole in your primary hand.
+		/endm
+	}
+/return
+
+Sub BagsFull
+	/if (${Me.FreeInventory} < 2) {
+		/stats
+        /echo You have ${Me.FreeInventory} Slots available, out of room. Ending Macro!
+		/delay 1s
+		/endmacro
+    }
+	/return
+Sub CheckBait	
+	|** Your bags must be open or FindItem invslot checks will result in NULL!!!**|
+	/call OpenAllContainers
+
+	|** If you have no more bait **|
+	/if (${Math.Calc[${FindItemCount[Bait]} - ${FindItemCount[Anizok's Bait Dispenser]} + ${FindItemCount[Bookworm]}].Int}) {
+		/return
+	}
+	
+	/if (${FindItemCount[Endless Worms]}) {
+		/while (${FindItemCount[Endless Worms]}) {
+			/if (!${FindItem[Endless Worms].TimerReady}) {
+				/useitem "Endless Worms"
+				/delay 2s ${Me.Casting.ID}
+				/delay 4s ${Cursor.Name.Equal[Bait Worm]}
+				/autoinventory
+				/break
+			}
+
+			/echo \at[\apCWTN\at]\aw Waiting for Endless Worms to be ready!
+			/delay 1s ${FindItem[Endless Worms].TimerReady}
+		}
+		
+	} else /if (${HaveDispenser} && ${FindItemCount[=Fresh Fish]}) {
+		|Need to put the bait dispenser in your 10th bag slot. Sorry for the mess I'm about to make.
+		/if (${Me.Inventory[32].Name.NotEqual[Anizok's Bait Dispenser]}) {
+			/call OpenAllContainers
+			/call GrabItem "Anizok's Bait Dispenser" "left"
+			/delay 2s ${Cursor.Name.Equal[Anizok's Bait Dispenser]}
+			/notify InventoryWindow InvSlot32 leftmouseup
+			/delay 2s !${Cursor.ID}
+			/call CleanCursor
+		}
+		/call MakeBait
+	} else {
+		/stats
+		/echo \at[\apCWTN\at]\aw You have run out of bait!
+		/echo \at[\apCWTN\at]\aw Ending Macro!
+		/end
+	}
+/return
+
+Sub MakeBait
+	/call OpenAllContainers
+	/delay 5
+	/call GrabItem "Fresh Fish" "left"
+	/delay 1s ${Cursor.ID}
+	/itemnotify in pack10 1 leftmouseup
+	/delay 5 !${Cursor.ID}
+	/combine pack10
+	/delay 1s ${Cursor.ID}
+	/if (!${Cursor.Name.Equal[Homemade bait]}) {
+		/autoinv
+		/call ContainerCleanup
+	}
+	/if (${Cursor.Name.Equal[Homemade bait]}) {
+		/autoinv
+	}
+	/call CloseAllContainers
+/return
+
+Sub ContainerCleanup
+	/echo \at[\apCWTN\at]\aw Something is in your container, removing items from container.
+	/delay 1
+	/nomodkey /shiftkey /itemnotify in pack10 1 leftmouseup
+	/while (${Cursor.ID}) {
+		/autoinv
+		/delay 2
+		
+		}
+	/nomodkey /shiftkey /itemnotify in pack10 2 leftmouseup
+	/while (${Cursor.ID}) {
+		/autoinv
+		/delay 2
+		
+		}
+		/return
+		
+Sub CleanCursor
+	/if (${Cursor.ID}) {
+		/echo \at[\apCWTN\at]\aw Seems you had something in bag slot 10, lemme try to get it off my cursor.
+		/declare i int local 0
+		/for i 23 to 32
+			/if (!${Cursor.ID}) /break
+			/if (${Cursor.ID}) /nomodkey /ctrl /notify InventoryWindow InvSlot${i} leftmouseup
+			/delay 5 !${Cursor.ID}
+			/if (${Cursor.ID}) /nomodkey /ctrl /notify InventoryWindow InvSlot${i} leftmouseup
+		/next i
+		/if (!${Cursor.ID}) /echo \at[\apCWTN\at]\aw Seems I got rid of the item on my cursor. Let's try to make some bait.
+	}
+/return
+	
+Sub OpenAllContainers
+	|** Opening your inventory and bags **|
+	/if (!${Window[InventoryWindow].Open}) {
+		/windowstate InventoryWindow open
+		/delay 1s
+	}
+	/keypress OPEN_INV_BAGS
+	/delay 1s
+/return
+
+Sub CloseAllContainers
+	|** Closing inventory bags and everything **|
+	/if (${Window[InventoryWindow].Open}) {
+		/windowstate InventoryWindow close
+		/delay 1s
+	}
+	/keypress CLOSE_INV_BAGS
+	/delay 1s
+	/keypress ESC
+	/delay 1s
+/return
+
+Sub Aggro
+	/if (${getAggro} && ${Me.XTarget} > 0 && ${Me.PctHPs} < 95) {
+		/echo \at[\apCWTN\at]\ar Getting out of here! Hope you have a Bulwark, Stein, or can Gate...
+		/useitem "Bulwark of Many Portals"
+		/delay 5
+		/useitem "Drunkard's Stein"
+		/delay 5
+		/cast Exodus
+		/delay 5
+		/cast gate
+		/stats
+		/endmacro
+	}
+/return
+
+Sub GMCheck
+	/if (${alertGM} && ${Spawn[gm].ID}) {
+		/beep
+		/beep
+		/echo \at[\apCWTN\at]\ar GM entered the zone!
+		/echo \at[\apCWTN\at]\ay For safety reasons ending the macro and camping.
+		/stats
+		/if (!${Me.AFK}) {
+			/afk ${AFKMsg}
+		}
+		|Just gtfo
+		/camp
+		/endmacro
+	}
+/return
+
+Sub AFKCheck
+	/if (${alertPC} && ${SpawnCount[pc radius ${PCRadiusCheck}]}>(${grptotal})) {
+		/echo \at[\apCWTN\at] \ayPC near by!
+		/beep
+		/echo \at[\apCWTN\at] \agEntering AFK Mode for ${AFKTime} seconds...
+		/delay 1s
+		/if (!${Me.AFK}) {
+			/afk ${AFKMsg}
+		}
+	:wait
+		/for TimeInc 1 to ${AFKTime}
+			/echo \at[\apCWTN\at]\aw Tic toc... waiting for PC to get lost (${TimeInc}/${AFKTime})
+			/if (!${Me.AFK}) {
+				/afk ${AFKMsg}
+			}
+			/delay 1s
+		/next TimeInc
+		/call Aggro
+		/if (${alertPC} && ${SpawnCount[pc radius ${PCRadiusCheck}]}>(${grptotal})) {
+			|just stop and stay afk. Not worth it.
+			/camp
+			/goto :wait
+		}
+		/if (${Me.AFK}) {
+			/afk off
+		}
+	/delay 1s
+	}
+/return
+
+Sub getAle
+	/if (${reportSummoning}) {
+		/echo \at[\apCWTN\at]\ap Summoning \aw--->\ap Summoned: Ale \aw<---
+	}
+	/useitem "Brell's Fishin' Pole"
+/return
+
+Sub doFlyCasual
+	/declare HeadingChange		float		local
+
+	| Are we going to delay between casts, and then how many casts until next delay?
+	/if (${FlyCasualDelay}) {
+		/if (${FlyCasualDelayCounter}<1) {
+			| The Avg +/- variation must never be below 0. If Avg 3 with Var 2, we expect values between 1-5
+			/varcalc FlyCasualDelayDuration ${FlyCasualDelayAvg} - ${Math.Rand[${FlyCasualDelayVar}]} + ${Math.Rand[${FlyCasualDelayVar}]}
+			/varcalc FlyCasualDelayCounter ${FlyCasualDelayCounterAvg} - ${Math.Rand[${FlyCasualDelayCounterVar}]} + ${Math.Rand[${FlyCasualDelayCounterVar}]}
+			/echo \at[\apFlyCasual\at]\ag Short break for \at[\aw${FlyCasualDelayDuration}s\at] \ayNext delay in ${FlyCasualDelayCounter} casts.
+			/delay ${FlyCasualDelayDuration}s
+		}
+	}
+	
+	/if (${FlyCasualSitStand}) {
+		/if (${FlyCasualSitStandCounter}<1) {
+			/varcalc FlyCasualSitStandCounter ${FlyCasualSitStandAvg} - ${Math.Rand[${FlyCasualSitStandVar}]} + ${Math.Rand[${FlyCasualSitStandVar}]}
+			/echo \at[\apFlyCasual\at]\ag Stretching after \at[\aw${FlyCasualSitStandCounter}\at] \aymore casts.
+			/sit	
+		}
+	}
+
+	|||
+	||| If the user has manually turned me. Update original heading.
+	|||
+	/if (${Me.Heading.Degrees} != ${FlyCasualFidgetOriginalHeading}) /varset FlyCasualFidgetOriginalHeading ${Me.Heading.Degrees}
+
+	/if (${FlyCasualFidget} && ${Me.Standing} && ${FlyCasualFidgetCounter}<1) {
+	
+		/varcalc HeadingChange ${FlyCasualFidgetNewHeading} + ${Float[${Math.Rand[${FlyCasualFidgetDegVar}]}]} - ${Float[${Math.Rand[${FlyCasualFidgetDegVar}]}]}
+		
+		/call FaceThisWay ${HeadingChange}
+		/delay 5s
+		
+		|||
+		||| Bug in /face heading reverses compass direction...
+		|||
+		/varcalc FlyCasualFidgetOriginalHeading (360-${FlyCasualFidgetOriginalHeading})%360
+		
+		/face heading ${FlyCasualFidgetOriginalHeading}
+
+		/varcalc FlyCasualFidgetCounter ${FlyCasualFidgetCounterAvg} - ${Math.Rand[${FlyCasualFidgetCounterVar}]} + ${Math.Rand[${FlyCasualFidgetCounterVar}]}
+		/echo \at[\apFlyCasual\at]\ag Peering about after \at[\aw${FlyCasualFidgetCounter}\at] \aymore casts if standing.
+	}
+
+/return
+
+Sub FaceThisWay(float ChangeDegrees)
+	/declare CurrentHeading 	float	local	${Me.Heading.Degrees}
+	/declare NewHeading			float	local
+	
+	/varcalc NewHeading 360.0-${CurrentHeading}		
+	/varcalc NewHeading ${NewHeading}+${ChangeDegrees}
+	/varcalc NewHeading ${NewHeading}%360.00
+	/face heading ${NewHeading}
+/return
+
+Sub Event_Pole
+	/call CheckPole
+/return
+
+Sub Event_NoBait
+	/doevents flush
+	/call CheckBait
+/return
+
+Sub Event_moved
+	/echo \at[\apCWTN\at]\aw Stop moving around or type /end to stop FISH!
+/return
+
+Sub Event_castLine
+	/varcalc castCount ${castCount} + 1
+	/varset ICast 1
+	|Fly Casual vars
+	/varcalc FlyCasualDelayCounter ${FlyCasualDelayCounter} - 1
+	/varcalc FlyCasualSitStandCounter ${FlyCasualSitStandCounter} - 1
+	/varcalc FlyCasualFidgetCounter ${FlyCasualFidgetCounter} - 1
+/return
+
+Sub Event_noWater
+	/echo \at[\apCWTN\at]\aw There's no water here. Please move to a body of water and try again!
+/return
+
+Sub Event_dryLand
+	/echo \at[\apCWTN\at]\aw Can't use yourself as bait! Get out of the water knucklehead!
+/return
+
+Sub Event_poleBroke
+	/varcalc poleCount ${poleCount} + 1
+	/call CheckPole
+	|Missing!
+	/call CloseAllContainers
+/return
+
+Sub Event_drankAle
+	/varcalc alesDrank ${alesDrank} + 1
+/return
+
+Sub Event_caughtNothing
+	/varcalc caughtNothing ${caughtNothing} + 1
+	/varset ICast 0
+/return
+
+Sub Event_spillBeer
+	/varcalc beerSpills ${beerSpills} + 1
+/return
+
+Sub Event_youCaught
+	/varset ICast 0
+/return
+
+Sub Event_skillUp(string Line,string newSkill)
+	/echo \at[\apCWTN\at]\aw You are better at fishing \at[\aw${newSkill}\at] \ag/kazoo
+	/doevents flush skillUp
+/return
+
+Sub GrabItem(ItemName, action)
+	/declare keypress string local ""
+	/if (${action.Equal[left]}) {
+		/varset keypress leftmouseup
+	} else {
+		/varset keypress rightmouseup
+	}
+	
+	/squelch /nomodkey /ctrl /itemnotify in pack${Math.Calc[${FindItem[${ItemName}].ItemSlot} - 22].Int} ${Math.Calc[${FindItem[${ItemName}].ItemSlot2} + 1].Int} ${keypress}
+/return 
