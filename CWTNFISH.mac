@@ -1,5 +1,7 @@
 |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-|CWTNFish.mac by Chatwiththisname sometime in 2018ish.
+|
+| CWTNFish.mac by Chatwiththisname 12/30/2017
+| Supported and extended by AmericanNero and Cannonballdex
 |
 | Readme! Tailor ***Settings*** to customize timing, messages, what to do if you aggro... default afk
 |   message is Bio! Go wild and crazy and make something up.
@@ -8,6 +10,7 @@
 |	- Added global DestroyItem
 |   - Added CheckDestroyItem which loops until it finds something not to destroy.
 |   - Refactored FindItem.
+|   - Small Twigs and other junk should no longer end up in your bags unless Destroy is FALSE
 |
 | v1.23 Updated by AmericanNero 12/26/2021
 |   - Reportedly, twigs and other trash things were being kept, which was naughty. I could not replicate
