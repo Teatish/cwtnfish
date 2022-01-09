@@ -4,6 +4,11 @@
 | Readme! Tailor ***Settings*** to customize timing, messages, what to do if you aggro... default afk
 |   message is Bio! Go wild and crazy and make something up.
 |
+| v1.24 Updated by AmericanNero 1/9/2022
+|	- Added global DestroyItem
+|   - Added CheckDestroyItem which loops until it finds something not to destroy.
+|   - Refactored FindItem.
+|
 | v1.23 Updated by AmericanNero 12/26/2021
 |   - Reportedly, twigs and other trash things were being kept, which was naughty. I could not replicate
 |     so I fixed some things that didn't necessarily need fixing.
@@ -235,6 +240,9 @@ Sub Main
 	/declare FlyCasualSitStandVar int outer 20
 	/declare FlyCasualSitStandCounter int outer 25
 
+	||| Use a pipe | character to surround future additions to make them unambiguous. E.g. "|twig|" vs "|small twig|"
+	/declare DestroyList string outer "|Tattered Cloth Sandal|Rusty Dagger|Iksar Phalange|Sewer Catfish|Salt Minnow|Fish Scales|Small Twigs|"
+	
 	|***Should we turn while standing?***|
 	/declare FlyCasualFidget int outer 1
 	||| -----------------------------------------------------------------------
@@ -348,58 +356,56 @@ Sub SummonHargarsBait
 
 /return
 
+Sub CheckDestroyItems
+
+	/while (${DestroyList.Find[|${Cursor.Name}|]}) {
+
+		/if (${Cursor.Name.Equal[Tattered Cloth Sandal]}) {
+			/varcalc sandleCount ${sandleCount} + 1
+
+		} else /if (${Cursor.Name.Equal[Rusty Dagger]}) {
+			/varcalc daggerCount ${daggerCount} + 1
+
+		} else /if (${Cursor.Name.Equal[Iksar Phalange]}) {
+			/varcalc iksarPhalange ${iksarPhalange} + 1
+
+		} else /if (${Cursor.Name.Equal[Sewer Catfish]}) {
+			/varcalc sewerCatfish ${sewerCatfish} + 1
+
+		} else /if (${Cursor.Name.Equal[Salt Minnow]}) {
+			/varcalc saltMinnow ${saltMinnow} + 1
+
+		} else /if (${Cursor.Name.Equal[Fish Scales]}) {
+			/varcalc scalesCount ${scalesCount} + 1
+
+		} else /if (${Cursor.Name.Equal[Small Twigs]}) {
+			/varcalc twigsCount ${twigsCount} + 1
+		}
+
+		/if (${Destroy}) {
+			/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \ayDestroying
+			/destroy
+			/delay 1s !${Cursor.ID}
+
+		} else {
+			/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agTrash kept. Hippy.
+			/varcalc TrashKept ${TrashKept} + 1
+			/autoinventory
+			/delay 1s !${Cursor.ID}
+		}
+
+	}
+/return
+
 Sub KeepItem
+
 	/if (${Cursor.Name.Find[bait]} || ${Cursor.Name.Find[bookworm]}) {
 		/autoinventory
 		/delay 1s !${Cursor.ID}
 		/return
 	}
 
-	/if (${Destroy}) {
-
-		/if (${Cursor.Name.Equal[Tattered Cloth Sandal]}) {
-			/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \ayDestroying
-			/varcalc sandleCount ${sandleCount} + 1
-			/destroy
-			/delay 1s !${Cursor.ID}
-
-		} else /if (${Cursor.Name.Equal[Rusty Dagger]}) {
-			/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \ayDestroying
-			/varcalc daggerCount ${daggerCount} + 1
-			/destroy
-			/delay 1s !${Cursor.ID}
-
-		} else /if (${Cursor.Name.Equal[Iksar Phalange]}) {
-			/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \ayDestroying
-			/varcalc iksarPhalange ${iksarPhalange} + 1
-			/destroy
-			/delay 1s !${Cursor.ID}
-
-		} else /if (${Cursor.Name.Equal[Sewer Catfish]}) {
-			/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \ayDestroying
-			/varcalc sewerCatfish ${sewerCatfish} + 1
-			/destroy
-			/delay 1s !${Cursor.ID}
-
-		} else /if (${Cursor.Name.Equal[Salt Minnow]}) {
-			/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \ayDestroying
-			/varcalc saltMinnow ${saltMinnow} + 1
-			/destroy
-			/delay 1s !${Cursor.ID}
-
-		} else /if (${Cursor.Name.Equal[Fish Scales]}) {
-			/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \ayDestroying
-			/varcalc scalesCount ${scalesCount} + 1
-			/destroy
-			/delay 1s !${Cursor.ID}
-
-		} else /if (${Cursor.Name.Equal[Small Twigs]}) {
-			/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \ayDestroying
-			/varcalc twigsCount ${twigsCount} + 1
-			/destroy
-			/delay 1s !${Cursor.ID}
-		}
-	}
+	/call CheckDestroyItems
 
 	/if (!${Cursor.ID}) {
 		/return
@@ -408,100 +414,56 @@ Sub KeepItem
 	/if (${Cursor.Name.Equal[Summoned: Ale]}) {
 		/autoinventory
 		/delay 1s !${Cursor.ID}
+		/return
 	}
 
 	/if (${Cursor.Name.Equal[Fresh Fish]}) {
-		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
 		/varcalc freshFish ${freshFish} + 1
-		/autoinventory
-		/delay 1s !${Cursor.ID}
 
 	} else /if (${Cursor.Name.Equal[Velious Arrowhead]}) {
-		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
 		/varcalc veliousArrowhead ${veliousArrowhead} + 1
-		/autoinventory
-		/delay 1s !${Cursor.ID}
 
 	} else /if (${Cursor.Name.Equal[Velious Cod]}) {
-		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
 		/varcalc veliousCod ${veliousCod} + 1
-		/autoinventory
-		/delay 1s !${Cursor.ID}
 
 	} else /if (${Cursor.Name.Equal[Dragon Bay Snapper]}) {
-		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
 		/varcalc dragonbaySnapper ${dragonbaySnapper} + 1
-		/autoinventory
-		/delay 1s !${Cursor.ID}
 
 	} else /if (${Cursor.Name.Equal[Cobalt Cod]}) {
-		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
 		/varcalc cobaltCod ${cobaltCod} + 1
-		/autoinventory
-		/delay 1s !${Cursor.ID}
 
 	} else /if (${Cursor.Name.Equal[Crescent Perch]}) {
-		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
 		/varcalc crescentPerch ${crescentPerch} + 1
-		/autoinventory
-		/delay 1s !${Cursor.ID}
 
 	} else /if (${Cursor.Name.Equal[Primordial Clown Fish]}) {
-		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
 		/varcalc clownFish ${clownFish} + 1
-		/autoinventory
-		/delay 1s !${Cursor.ID}
 
 	} else /if (${Cursor.Name.Equal[Overthere Threadfin]}) {
-		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
 		/varcalc overthereThreadfin ${overthereThreadfin} + 1
-		/autoinventory
-		/delay 1s !${Cursor.ID}
 
 	} else /if (${Cursor.Name.Equal[Velious Bluefish]}) {
-		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
 		/varcalc veliousBluefish ${veliousBluefish} + 1
-		/autoinventory
-		/delay 1s !${Cursor.ID}
 
 	} else /if (${Cursor.Name.Equal[Primordial Lion Fish]}) {
-		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
 		/varcalc lionFish ${lionFish} + 1
-		/autoinventory
-		/delay 1s !${Cursor.ID}
 
 	} else /if (${Cursor.Name.Equal[Velious Angel Fish]}) {
-		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
 		/varcalc angelFish ${angelFish} + 1
-		/autoinventory
-		/delay 1s !${Cursor.ID}
 
 	} else /if (${Cursor.Name.Equal[Luclin Dragon Blood Cichlid]}) {
-		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
 		/varcalc luclinBloodCichlid ${luclinBloodCichlid} + 1
-		/autoinventory
-		/delay 1s !${Cursor.ID}
 
 	} else /if (${Cursor.Name.Equal[Luclin Flame Angel]}) {
-		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
 		/varcalc luclinFlameAngel ${luclinFlameAngel} + 1
-		/autoinventory
-		/delay 1s !${Cursor.ID}
 
 	} else {
-		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
 		/varcalc caughtCount ${caughtCount} + 1
-		/autoinventory
-		/delay 1s !${Cursor.ID}
-
-	} else /if (!${Destroy}) {
-		| Not gonna bother counting each item ...its trash. I don't want to rewrite this right now. AN
-		/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agTrash kept. Hippy.
-		/varcalc TrashKept ${TrashKept} + 1
-		/autoinventory
-		/delay 1s !${Cursor.ID}
 	}
-	
+
+	/echo \at[\apCWTN\at]\ag Caught \at[\aw${Cursor.Name}\at] \agKeeper
+	/autoinventory
+	/delay 1s !${Cursor.ID}
+
 /return
 
 Sub CheckPole
